@@ -1,0 +1,639 @@
+﻿@{
+    ViewBag.Title = "Index";
+}
+
+<script>
+    //я знаю, что плохо делать глобальную переменную
+    var filterTextVar = '';
+    var popUpWin = Ext.create('Ext.window.Window', {
+        html: '<div id = "popupwin"> текст </div>'
+    });
+
+ 
+
+    function changePopupWin(text) {
+        Ext.fly('popupwin').update(text);
+    }
+    Ext.onReady(function () {
+
+        Ext.define('BookSearch', {
+            extend: 'Ext.data.Model',
+            idProperty: 'BookId',
+            fields: [{
+                name: 'BookId',
+                type: 'int',
+            }, {
+                name: 'author',
+                type: 'string',
+            }, {
+                name: 'title',
+                type: 'string',
+            }, {
+                name: 'text',
+                type: 'string'
+            }]
+        });
+
+        Ext.define('Book', {
+            extend: 'Ext.data.Model',
+            idProperty: 'BookId',
+
+            fields: [{
+                name: 'BookId',
+                type: 'int',
+            },{
+                name: 'author',
+                type: 'string',
+            },{
+                name: 'title',
+                type: 'string'
+            },{
+                name: 'takeDate',
+                type: 'string'
+            },{
+                name: 'image',
+                type: 'string'
+            }]
+        });
+
+        var filterTypeData = [
+            ['Author', 'Автор'],
+            ['Title', 'Название'],
+            ['All', 'Везде']
+        ];
+
+        bookSearchStore = Ext.create('Ext.data.Store', {
+            model: 'BookSearch',
+            proxy: {
+                type: 'ajax',
+                url: 'BooksGrid/BookSearch',
+                reader: {
+                    type: 'json',
+                    root: 'books'
+                }
+            }
+        });
+
+        var bookStore = Ext.create('Ext.data.Store', {
+            model: 'Book',
+            autoLoad: true,
+            pageSize: 10,
+            proxy: {
+                type: 'ajax',
+                url: 'BooksGrid/getBooks',
+                reader: {
+                    type: 'json',
+                    root: 'books'
+                }
+            }
+        });
+
+        var myBookStore = Ext.create('Ext.data.Store', {
+            model: 'Book',
+            autoLoad: true,
+            proxy: {
+                type: 'ajax',
+                url: 'BooksGrid/GetMyBook',
+                reader: {
+                    type: 'json',
+                    root: 'books'
+                }
+            }
+        });
+
+        function takeBookfunc(index) {
+          //  console.log(index);
+            
+            var bookId = bookStore.getAt(index).get('BookId');
+            console.log({ index: index, bookid: bookId, bookStore: bookStore });
+            Ext.Ajax.request({
+                url: "BooksGrid/TakeBook?BookId=" + bookId,
+                success: function (response, options) {
+                    var objAjax = Ext.decode(response.responseText);
+                    if (objAjax.success) {
+                        Ext.Msg.alert("Вы взяли книгу");
+                        bookStore.load();
+                        myBookStore.load();
+                    }
+                    else
+                        Ext.Msg.alert(objAjax.errorText);
+                },
+                failure: function (response, options) {
+                    Ext.Msg.alert('Ошибка: ' + response.statusText);
+                }
+            })
+        };
+
+        function updateTipBodyFunc(tip) {
+            var bookid = booksView.getRecord(tip.triggerElement).get('BookId');
+            var author = booksView.getRecord(tip.triggerElement).get('author');
+            var title = booksView.getRecord(tip.triggerElement).get('title');
+            //var restip = "<img style='width:100px; height:75px;' src=\"BooksGrid/getImageByID?BookId=" + bookid + "\" />";
+            //var restip = '<div style="width:100%;"><div style="float:left; width:50%"><img style="width:100px; height:75px;" src="BooksGrid/getImageByID?BookId=' + bookid + '"/></div>' +
+            //'<div style="float: right; width:50%;overflow:inherit"><span>' + author + '</span><br>' +
+            //'<span>' + title + '</span></div></div>';
+            var restip = '<img style="width:100px; height:75px;float:left" src="BooksGrid/getImageByID?BookId=' + bookid + '"/>' +
+                '<span>' + author + '</span><br><br>' +
+                '<span>' + title + '</span>';
+            tip.update(restip);
+        }
+
+        function returnBookFunc(index) {
+            var bookId = myBookStore.getAt(index).get('BookId');
+            Ext.Ajax.request({
+                url: "BooksGrid/ReturnBook?BookId=" + bookId,
+                success: function (response, options) {
+                    var objAjax = Ext.decode(response.responseText);
+                    if (objAjax.success) {
+                        Ext.Msg.alert("Вы вернули книгу");
+                        bookStore.load();
+                        myBookStore.load();
+                    }
+                    else
+                        Ext.Msg.alert(objAjax.errorText);
+                },
+                failure: function (response, options) {
+                    Ext.Msg.alert('Ошибка: ' + response.statusText);
+                }
+            })
+        }
+
+        function addNewBook() {
+            var win = Ext.create('Ext.window.Window', {
+                title: 'Добавление книги',
+                modal: true,
+                items: [{
+                    xtype: 'form',
+                    items: [{
+                        xtype: 'filefield',
+                        name: 'uploadImage',
+                        fieldLabel: 'файл изображения',
+                        msgTarget: 'side',
+                        allowBlank: false,
+                        buttonText: '...'
+                    }, {
+                        xtype: 'textfield',
+                        fieldLabel: 'Автор',
+                        name: 'Author',
+                    }, {
+                        xtype: 'textfield',
+                        fieldLabel: 'Название',
+                        name: 'Title',
+                    }],
+                    buttons: [{
+                        text: 'добавить книгу',
+                        handler: function () {
+                            var form = this.up('form').getForm();
+                            if (form.isValid()) {
+                                form.submit({
+                                    url: 'BooksGrid/addBook',
+                                    waitMsg: 'Загрузка...',
+                                    success: function (fp, o) {
+                                        Ext.Msg.alert('Книга добавлена');
+                                        win.close();
+                                        bookStore.load();
+                                    }
+                                })
+                            }
+                        }
+                    }]
+                }]
+            });
+
+            win.show();
+        }
+
+        var filterForm = Ext.create('Ext.form.Panel', {
+            title: 'поиск',
+            height: 150,
+            layout: 'hbox',
+            items: [{
+                xtype: 'combobox',
+                fieldLabel: 'Поиск по',
+                name: 'filterField',
+                flex: 1,
+                labelAlign: 'top',
+                emptyText: 'Везде',
+                id: 'comboFilterField',
+                //autoSelect: true,
+                store: new Ext.data.SimpleStore({
+                    id: 0,
+                    fields:[
+                        'enText',
+                        'ruText',
+                    ],
+                    data: filterTypeData
+                }),
+                valueField: 'enText',
+                displayField: 'ruText',
+                queryMode: 'local'
+            }, {
+                xtype: 'combobox',
+                fieldLabel: 'Частичный текст',
+                name: 'filterText',
+                flex: 1,
+                labelAlign: 'top',
+                enableKeyEvents: true,
+                emptyText: 'Введите текст..',
+                store: bookSearchStore,
+                displayField: 'text',
+                valueField: 'text',
+                hideTrigger: true,
+                selectOnFocus: true,
+                mode: 'remote',
+                editable: true,
+                listConfig: {
+                    autoShow: true,
+                    getInnerTpl: function(){
+                        return 'автор: {author} <br> Название: {title} <hr>'
+                    }
+                },
+                listeners: {
+                    
+                    keyup: function (comboBox) {
+                        //console.log(comboBox.getValue());
+                        if (filterTextVar == comboBox.getValue())
+                            return;
+                        filterTextVar = comboBox.getValue();
+                        bookSearchStore.getProxy().extraParams = {
+                            //Тут, наверное, лучше вытащить из формы поле
+                            'filterField': Ext.getCmp('comboFilterField').getValue(),
+                            'text': comboBox.getValue()
+                        };
+                        bookSearchStore.load();
+                        comboBox.expand();
+                    }
+                }
+            }, {
+                xtype: 'checkbox',
+                boxLabel: 'Только в наличии',
+                name: 'onlyInStock',
+                checked: false
+            }],
+            buttons: [{
+                text: 'поиск',
+                handler: function () {
+                    var formData = filterForm.getForm().getValues();
+                    
+                    // var filterData = '?' + formData;
+                    // console.log(formData);
+                    bookStore.getProxy().extraParams = formData;
+                    bookStore.load();
+                   
+                }
+            }, {
+                text: 'сброс',
+                handler: function () {
+                    bookStore.getProxy().extraParams = {
+                        "filterField": null,
+                        "filterText": null,
+                        "onlyInStock": null
+                    };
+                    filterForm.getForm().reset();
+
+                    bookStore.load();
+                }
+
+            }]
+        });
+
+        var loginForm = Ext.create('Ext.form.Panel', {
+            //header: false,
+            title: 'Я',
+            //bodyPadding: 5,
+
+            titleAlign: 'center',
+            height: 150,
+            defaults: {
+                anchor: '80%'
+            },
+            items: [{
+                xtype: 'textfield',
+                fieldLabel: 'Логин',
+                name: 'UserName',
+                id: 'textFieldUserName',
+                // labelAlign: 'top',
+                flex: 1
+            }, {
+                xtype: 'textfield',
+                fieldLabel: 'Пароль',
+                name: 'Password',
+                inputType: 'password',
+                id: 'textFieldPassword',
+                // labelAlign: 'top',
+                flex: 1
+            }],
+            buttons: [{
+                text: 'Войти',
+                id: 'buttonLogin',
+                handler: function () {
+                    loginForm.getForm().submit({
+                        url: 'Account/Login',
+                        success: function (form, action) {
+                            Ext.MessageBox.alert('Авторизация пройдена', action.result.message)
+                            Ext.getCmp('textFieldUserName').setReadOnly(true);
+                            Ext.getCmp('textFieldPassword').setReadOnly(true);;
+                            Ext.getCmp('buttonLogin').hide();
+                            Ext.getCmp('buttonRegister').hide();
+                            Ext.getCmp('buttonLogOut').show();
+                            bookStore.load();
+                            myBookStore.load();
+                            
+                        },
+                        failure: function (form, action) {
+                            Ext.MessageBox.alert('Авторизация не пройдена', action.result.message)
+                        }
+                    });
+                        
+                }
+            }, {
+                text: 'Зарегистрироваться',
+                id: 'buttonRegister',
+                handler: function () {
+                    loginForm.getForm().submit({
+                        url: 'Account/Register',
+                        success: function (form, action) {
+                            Ext.MessageBox.alert('Регистрация прошла успешно', 'Ok')
+                            Ext.getCmp('textFieldUserName').setReadOnly(true);
+                            Ext.getCmp('textFieldPassword').setReadOnly(true);
+                            Ext.getCmp('buttonLogin').hide();
+                            Ext.getCmp('buttonRegister').hide();
+                            Ext.getCmp('buttonLogOut').show();
+                            myBookStore.load();
+                        },
+                        failure: function (form, action) {
+                            Ext.MessageBox.alert('Ошибка регистрации', 'Nope')
+                        }
+                    });
+                }
+            }, {
+                text: 'Выйти',
+                id: 'buttonLogOut',
+                hidden: true,
+                handler: function () {
+                    Ext.Ajax.request({
+                        url: 'Account/LogOff',
+                        success: function (form, action) {
+                            Ext.getCmp('textFieldUserName').setReadOnly(false);
+                            Ext.getCmp('textFieldPassword').setReadOnly(false);
+                            Ext.getCmp('buttonLogin').show();
+                            Ext.getCmp('buttonRegister').show();
+                            Ext.getCmp('buttonLogOut').hide();
+                            myBookStore.load();
+                        }
+                    })
+                }
+            }]
+        });
+
+        //Проверка, вдруг пользователь авторизован
+        Ext.Ajax.request({
+            url: 'Account/IsAuth',
+            success: function (response, options) {
+                var objAjax = Ext.decode(response.responseText);
+                //console.log(objAjax);
+                if (objAjax.success) {
+                    Ext.getCmp('textFieldUserName').setValue(objAjax.UserName);
+                    Ext.getCmp('textFieldUserName').setReadOnly(true);
+                    Ext.getCmp('textFieldPassword').setReadOnly(true);
+                    Ext.getCmp('buttonLogin').hide();
+                    Ext.getCmp('buttonRegister').hide();
+                    Ext.getCmp('buttonLogOut').show();
+                    myBookStore.load();
+                }
+            }
+        });
+
+
+        var booksGrid = Ext.create('Ext.grid.Panel', {
+            title: 'Книги',
+            store: bookStore,
+            viewConfig: {
+                plugins: {
+                    ptype: 'gridviewdragdrop',
+                    dragGroup: 'userBookPanel',
+                    dropGroup: 'booksGrid'
+                },
+                listeners: {
+                    beforedrop: function (node, data, overModel, dropPosition, dropHandlers) {
+                        returnBookFunc(data.records[0].index);
+                        dropHandlers.cancelDrop();
+                    }
+                }
+            },
+            dockedItems: [{
+                xtype: 'toolbar',
+                dock: 'top',
+                items: [{
+                    xtype: 'button',
+                    text: 'Добавить книгу',
+                    handler: addNewBook
+                }]
+            }, {
+                xtype: 'pagingtoolbar',
+                store: bookStore,
+                dock: 'bottom',
+                displayInfo: true,
+                beforePageText: 'Страница',
+                afterPageText: 'из {0}',
+                displayMsg: 'Книги {0} - {1} из {2}'
+            }],
+            listeners: {
+                //itemmouseenter: function (thiss, record, item, index, e, eOpts) {
+                    
+                //    popUpWin.show();
+                //    changePopupWin(record.index);
+                //   // console.log(record);
+                //},
+                //itemmouseleave: function (thiss, record, item, index, e, eOpts) {
+                //    popUpWin.hide();
+                //}
+
+            },
+            columns: [{
+                xtype: 'rownumberer'
+            }, {
+                dataIndex: 'BookId',
+                hidden: true
+            },{
+                header: 'Автор',
+                dataIndex: 'author'
+            }, {
+                header: 'Название',
+                dataIndex: 'title'
+            }, {
+                header: 'Дата взятия',
+                dataIndex: 'takeDate'
+            },
+            {
+                header: 'Обложка',
+                dataIndex: 'BookId',
+                renderer: function (v) {
+                    return "<img style='width:80px; height:60px;' src=\"BooksGrid/getImageByID?BookId=" + v + "\" />";
+                        
+                }
+            },{
+                xtype: 'actioncolumn',
+                align: 'center',
+                header: 'Взять книгу',
+                items: [{
+                    icon: '/Image/TakeBook.jpg',
+                    tooltip: 'Взять книгу',
+                    
+                    handler: function (grid, rowIndex, colIndex) {
+                        takeBookfunc(rowIndex);
+                    }
+                }]
+
+            }, {
+                xtype: 'actioncolumn',
+                align: 'center',
+                header: 'Удалить книгу',
+                items: [{
+                    icon: '/Image/delete.png',
+                    tooltip: 'Удалить книгу',
+                    handler: function (grid, rowIndex, colIndex) {
+                        var bookId = bookStore.getAt(rowIndex).get('BookId');
+                        Ext.Ajax.request({
+                            url: "BooksGrid/DeleteBook?BookId=" + bookId,
+                            success: function (response, options) {
+                                var objAjax = Ext.decode(response.responseText);
+                                if (objAjax.success) {
+                                    Ext.Msg.alert("Книга удалена");
+                                    bookStore.load();
+
+                                }
+                                else {
+                                    Ext.Msg.alert(objAjax.errorText);
+                                    bookStore.load();
+                                }
+                            },
+                            failure: function (response, options) {
+                                Ext.Msg.alert('Ошибка: ' + response.statusText);
+                            }
+                        })
+                    }
+                }]
+
+            }]
+        });
+
+
+        var userBookPanel = Ext.create('Ext.grid.Panel', {
+            title: 'Мои книги',
+            store: myBookStore,
+            viewConfig: {
+                plugins: {
+                    ptype: 'gridviewdragdrop',
+                    dragGroup: 'booksGrid',
+                    dropGroup: 'userBookPanel',
+                },
+                listeners: {
+                    beforedrop: function (node, data, overModel, dropPosition, dropHandlers) {
+                        takeBookfunc(data.records[0].index);
+                        dropHandlers.cancelDrop();
+                    }
+                }
+            },
+            listeners: {
+                //itemmouseenter: function (thiss, record, item, index, e, eOpts) {
+                    
+                //    popUpWin.show();
+                //    changePopupWin(record.index);
+                //  //  console.log(record);
+                //},
+                //itemmouseleave: function (thiss, record, item, index, e, eOpts) {
+                //    popUpWin.hide();
+                //}
+
+            },
+
+            columns: [{
+                xtype: 'rownumberer'
+            }, {
+                dataIndex: 'BookId',
+                hidden: true
+            }, {
+                header: "Название",
+                xtype: 'templatecolumn',
+                dataIndex: 'author',
+                tpl:'<b>{author}.</b> {title}'
+            }, {
+                header: 'Дата возврата (+10д)',
+                dataIndex: 'takeDate'
+            }, {
+                header: 'Обложка',
+                dataIndex: 'BookId',
+                renderer: function (v) {
+                    return "<img style='width:80px; height:60px;' src=\"BooksGrid/getImageByID?BookId=" + v + "\" />";
+                }
+            }, {
+                xtype: 'actioncolumn',
+                align: 'center',
+                header: 'Вернуть книгу',
+                items: [{
+                    icon: '/image/ReturnBook.jpg',
+                    tooltip: 'Вернуть книгу',
+                    handler: function (grid, rowIndex, colIndex) {
+                        returnBookFunc(rowIndex);
+                    }
+                }]
+
+            }]
+        });
+
+
+        var viewport = Ext.create('Ext.container.Viewport', {
+            layout: {
+                type: 'hbox',
+                align: 'stretch'
+            },
+            renderTo: Ext.getBody(),
+            border: false,
+            header: false,
+            defoults: {
+                titleAlign: 'center'
+            },
+            
+            
+            items: [{
+                xtype: 'panel',
+                layout: {
+                    type: 'vbox',
+                    align: 'stretch'
+                },
+                border: false,
+                header: false,
+                
+                flex: 2,
+                items: [filterForm, booksGrid]
+            }, {
+                xtype: 'panel',
+                layout: {
+                    type: 'vbox',
+                    align: 'stretch'
+                },
+                border: false,
+                header: false,
+                
+                flex: 1,
+                items: [loginForm, userBookPanel]
+            }]
+        });
+
+        var booksView = booksGrid.getView();
+        var booksTips = Ext.create('Ext.tip.ToolTip', {
+            target: booksView.el,
+            delegate: booksView.itemSelector,
+            trackingMouse: true,
+            renderTo: Ext.getBody(),
+            listeners: {
+                beforeshow: function updateTipBody(tip) {
+                    updateTipBodyFunc(tip);
+                }
+            }
+        });
+    });
+ 
+</script>
+
