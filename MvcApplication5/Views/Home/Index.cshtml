@@ -129,7 +129,7 @@
             var author = booksView.getRecord(tip.triggerElement).get('author');
             var title = booksView.getRecord(tip.triggerElement).get('title');
             //var restip = "<img style='width:100px; height:75px;' src=\"BooksGrid/getImageByID?BookId=" + bookid + "\" />";
-            //var restip = '<div style="width:100%;"><div style="float:left; width:50%"><img style="width:100px; height:75px;" src="BooksGrid/getImageByID?BookId=' + bookid + '"/></div>' +
+            //var restip = '<div style="display: inline-block;"><div style="display: inline-block; width: 50%; overflow: hidden"><img style="width:100px; height:75px;" src="BooksGrid/getImageByID?BookId=' + bookid + '"/></div>' +
             //'<div style="float: right; width:50%;overflow:inherit"><span>' + author + '</span><br>' +
             //'<span>' + title + '</span></div></div>';
             var restip = '<img style="width:100px; height:75px;float:left" src="BooksGrid/getImageByID?BookId=' + bookid + '"/>' +
@@ -622,9 +622,21 @@
         });
 
         var booksView = booksGrid.getView();
+        var userBooksView = userBookPanel.getView();
         var booksTips = Ext.create('Ext.tip.ToolTip', {
             target: booksView.el,
             delegate: booksView.itemSelector,
+            trackingMouse: true,
+            renderTo: Ext.getBody(),
+            listeners: {
+                beforeshow: function updateTipBody(tip) {
+                    updateTipBodyFunc(tip);
+                }
+            }
+        });
+        var userbooksTips = Ext.create('Ext.tip.ToolTip', {
+            target: userBooksView.el,
+            delegate: userBooksView.itemSelector,
             trackingMouse: true,
             renderTo: Ext.getBody(),
             listeners: {
