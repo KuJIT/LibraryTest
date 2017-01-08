@@ -75,7 +75,7 @@ namespace MvcApplication5.Controllers
                // image = Convert.ToBase64String(b.image),
                 takeDate = b.takeDate == null? "В наличии": ((DateTime)b.takeDate).ToString("d")
             }).ToArray();
-            var dbugres = Json(new { success = true, total = resFin.Length, books = resFin }, JsonRequestBehavior.AllowGet);
+            var dbugres = Json(new { success = true, total = res.Count(), books = resFin }, JsonRequestBehavior.AllowGet);
             return dbugres; 
         }
 
@@ -111,6 +111,7 @@ namespace MvcApplication5.Controllers
         }
 
         [HttpPost]
+        //[Authorize(Roles="Admin")]
         public JsonResult AddBook(Book book, HttpPostedFileBase uploadImage)
         {
             byte[] imageData = null;
@@ -256,7 +257,8 @@ namespace MvcApplication5.Controllers
             db.SaveChanges();
             return Json(new { success = true }, JsonRequestBehavior.AllowGet);
         }
-
+       
+        //[Authorize(Roles = "Admin")]
         public JsonResult getDebtorsBooks()
         {
             var debtorsBooks = db.TakeBooks.Join(db.Books, t => t.BookId, b => b.BookId, (t, b) => 

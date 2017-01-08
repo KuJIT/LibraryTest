@@ -3,11 +3,16 @@
 }
 
 <script>
-    //я знаю, что плохо делать глобальную переменную
-    var filterTextVar = '';
+    
+
+
 
     Ext.onReady(function () {
+        //я знаю, что плохо делать глобальную переменную
+        //Для проверки, изменился ли текст в филтр-поле
+        var filterTextVar = '';
 
+        //Модель для живого поиска
         Ext.define('BookSearch', {
             extend: 'Ext.data.Model',
             idProperty: 'BookId',
@@ -26,6 +31,7 @@
             }]
         });
 
+        //Модель для книги 
         Ext.define('Book', {
             extend: 'Ext.data.Model',
             idProperty: 'BookId',
@@ -48,12 +54,14 @@
             }]
         });
 
+        //Данные для комбобокса в фильтре 
         var filterTypeData = [
             ['Author', 'Автор'],
             ['Title', 'Название'],
             ['All', 'Везде']
         ];
 
+        //Хранилище для живого поиска
         bookSearchStore = Ext.create('Ext.data.Store', {
             model: 'BookSearch',
             proxy: {
@@ -66,6 +74,7 @@
             }
         });
 
+        //Хранилище для грида со всеми книгами
         var bookStore = Ext.create('Ext.data.Store', {
             model: 'Book',
             autoLoad: true,
@@ -80,6 +89,7 @@
             }
         });
 
+        //Хранилище для грида с книгами, которые взял пользователь
         var myBookStore = Ext.create('Ext.data.Store', {
             model: 'Book',
             autoLoad: true,
@@ -93,6 +103,18 @@
             }
         });
 
+        //Метод для начала поиска
+        function startSearch() {
+            var formData = filterForm.getForm().getValues();
+                    
+            // var filterData = '?' + formData;
+            // console.log(formData);
+            bookStore.getProxy().extraParams = formData;
+            bookStore.load();
+                   
+        }
+
+        //Функция для взятия книги пользователем
         function takeBookfunc(index) {
           //  console.log(index);
             
@@ -116,6 +138,7 @@
             })
         };
 
+        //Метод для обновления текста в тултипе описания книги
         function updateTipBodyFunc(tip) {
             var bookid = booksView.getRecord(tip.triggerElement).get('BookId');
             var author = booksView.getRecord(tip.triggerElement).get('author');
@@ -130,6 +153,7 @@
             tip.update(restip);
         }
 
+        //Метод для возврата книги пользователем в библиотеку
         function returnBookFunc(index) {
             var bookId = myBookStore.getAt(index).get('BookId');
             Ext.Ajax.request({
@@ -150,6 +174,7 @@
             })
         }
 
+        //Хранилище для списка должников
         var debtorsStor = Ext.create('Ext.data.Store', {
             model: 'Book',
             autoLoad: true,
@@ -164,9 +189,9 @@
             }
         });
 
-
+        //Создания окна со списком должников
         function debtors() {
-            console.log('start');
+            //console.log('start');
             debtorsStor.load();
             var win = Ext.create('Ext.window.Window', {
                 title: 'Должники',
@@ -214,7 +239,7 @@
             console.log('fin');
         }
 
-
+        //Создания окна для добавления новой книги
         function addNewBook() {
             var win = Ext.create('Ext.window.Window', {
                 title: 'Добавление книги',
@@ -260,6 +285,7 @@
             win.show();
         }
 
+        //Форма фильтрации
         var filterForm = Ext.create('Ext.form.Panel', {
             title: 'поиск',
             height: 150,
@@ -288,6 +314,7 @@
                 xtype: 'combobox',
                 fieldLabel: 'Частичный текст',
                 name: 'filterText',
+                id: 'filterText',
                 flex: 1,
                 labelAlign: 'top',
                 enableKeyEvents: true,
@@ -307,8 +334,16 @@
                 },
                 listeners: {
                     
-                    keyup: function (comboBox) {
+                    keyup: function (comboBox, ev) {
                         //console.log(comboBox.getValue());
+                        if (ev.getKey() == ev.ENTER) {
+                            
+                            if (filterTextVar == comboBox.getValue()) {
+                                //Ext.getCmp('searchButton').fireEvent('click');
+                                startSearch();
+                                return;
+                            }
+                        };
                         if (filterTextVar == comboBox.getValue())
                             return;
                         filterTextVar = comboBox.getValue();
@@ -329,15 +364,8 @@
             }],
             buttons: [{
                 text: 'поиск',
-                handler: function () {
-                    var formData = filterForm.getForm().getValues();
-                    
-                    // var filterData = '?' + formData;
-                    // console.log(formData);
-                    bookStore.getProxy().extraParams = formData;
-                    bookStore.load();
-                   
-                }
+                id: 'searchButton',
+                handler: startSearch
             }, {
                 text: 'сброс',
                 handler: function () {
@@ -354,6 +382,31 @@
             }]
         });
 
+       // console.log(Ext.getCmp('filterText'));
+
+        //метод для входа пользователя
+        function logInMethod() {
+            loginForm.getForm().submit({
+                url: 'Account/Login',
+                success: function (form, action) {
+                    Ext.MessageBox.alert('Авторизация пройдена', action.result.message)
+                    Ext.getCmp('textFieldUserName').setReadOnly(true);
+                    Ext.getCmp('textFieldPassword').setReadOnly(true);;
+                    Ext.getCmp('buttonLogin').hide();
+                    Ext.getCmp('buttonRegister').hide();
+                    Ext.getCmp('buttonLogOut').show();
+                    bookStore.load();
+                    myBookStore.load();
+                            
+                },
+                failure: function (form, action) {
+                    Ext.MessageBox.alert('Авторизация не пройдена', action.result.message)
+                }
+            });
+                        
+        }
+
+        //Форма авторизации
         var loginForm = Ext.create('Ext.form.Panel', {
             //header: false,
             title: 'Я',
@@ -364,6 +417,7 @@
             defaults: {
                 anchor: '80%'
             },
+
             items: [{
                 xtype: 'textfield',
                 fieldLabel: 'Логин',
@@ -378,31 +432,23 @@
                 inputType: 'password',
                 id: 'textFieldPassword',
                 // labelAlign: 'top',
-                flex: 1
+                flex: 1,
+                enableKeyEvents: true,
+                listeners: {
+                    keyup: function (textfield, ev) {
+                        console.log('enter');
+                        if (ev.getKey() == ev.ENTER) {
+                            logInMethod();
+                            return;
+                        };
+                    }
+                    
+                }
             }],
             buttons: [{
                 text: 'Войти',
                 id: 'buttonLogin',
-                handler: function () {
-                    loginForm.getForm().submit({
-                        url: 'Account/Login',
-                        success: function (form, action) {
-                            Ext.MessageBox.alert('Авторизация пройдена', action.result.message)
-                            Ext.getCmp('textFieldUserName').setReadOnly(true);
-                            Ext.getCmp('textFieldPassword').setReadOnly(true);;
-                            Ext.getCmp('buttonLogin').hide();
-                            Ext.getCmp('buttonRegister').hide();
-                            Ext.getCmp('buttonLogOut').show();
-                            bookStore.load();
-                            myBookStore.load();
-                            
-                        },
-                        failure: function (form, action) {
-                            Ext.MessageBox.alert('Авторизация не пройдена', action.result.message)
-                        }
-                    });
-                        
-                }
+                handler: logInMethod
             }, {
                 text: 'Зарегистрироваться',
                 id: 'buttonRegister',
@@ -461,7 +507,7 @@
             }
         });
 
-
+        //Список всех книг
         var booksGrid = Ext.create('Ext.grid.Panel', {
             title: 'Книги',
             store: bookStore,
@@ -570,7 +616,7 @@
             }]
         });
 
-
+        //Панель с книгами, которые взял пользователь
         var userBookPanel = Ext.create('Ext.grid.Panel', {
             title: 'Мои книги',
             store: myBookStore,
@@ -627,7 +673,7 @@
             }]
         });
 
-
+        //Общее окно
         var viewport = Ext.create('Ext.container.Viewport', {
             layout: {
                 type: 'hbox',
@@ -666,6 +712,7 @@
             }]
         });
 
+        //Всплывающие подсказки 
         var booksView = booksGrid.getView();
         var userBooksView = userBookPanel.getView();
         var booksTips = Ext.create('Ext.tip.ToolTip', {
@@ -691,6 +738,17 @@
             }
         });
     });
+
+    //Попытка настроить отправку данных по интер. Не работает
+    //var filterKeyMap = new Ext.util.KeyMap({
+    //    target: Ext.getCmp('textFieldPassword'),
+    //    key: 13,
+    //    //eventName: 'keydown',
+    //    fn: function () {
+    //        console.log(Ext.getCmp('textFieldPassword'));
+    //    }
+    //    //,scope: Ext.getCmp('filterText')
+    //});
  
 </script>
 
