@@ -257,5 +257,30 @@ namespace MvcApplication5.Controllers
             return Json(new { success = true }, JsonRequestBehavior.AllowGet);
         }
 
+        public JsonResult getDebtorsBooks()
+        {
+            var debtorsBooks = db.TakeBooks.Join(db.Books, t => t.BookId, b => b.BookId, (t, b) => 
+                new 
+                { 
+                    userId = t.UserId, 
+                    takeDate = t.Date, 
+                    title = b.Title, 
+                    author = b.Author,
+                    BookId = b.BookId
+                }).ToArray();
+
+            var debtorsBooksForm = debtorsBooks.Select(d =>
+                new
+                {
+                    user = Membership.GetUser(d.userId).UserName,
+                    takeDate = d.takeDate.AddDays(10).ToString("d"),
+                    title = d.title,
+                    author = d.author,
+                    BookId = d.BookId
+                }).ToArray();
+
+            return Json(new { success = true, books = debtorsBooksForm }, JsonRequestBehavior.AllowGet);
+        }
+
     }
 }

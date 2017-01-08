@@ -1,19 +1,11 @@
 ﻿@{
-    ViewBag.Title = "Index";
+    ViewBag.Title = "Библиотека";
 }
 
 <script>
     //я знаю, что плохо делать глобальную переменную
     var filterTextVar = '';
-    var popUpWin = Ext.create('Ext.window.Window', {
-        html: '<div id = "popupwin"> текст </div>'
-    });
 
- 
-
-    function changePopupWin(text) {
-        Ext.fly('popupwin').update(text);
-    }
     Ext.onReady(function () {
 
         Ext.define('BookSearch', {
@@ -51,7 +43,7 @@
                 name: 'takeDate',
                 type: 'string'
             },{
-                name: 'image',
+                name: 'user',
                 type: 'string'
             }]
         });
@@ -157,6 +149,71 @@
                 }
             })
         }
+
+        var debtorsStor = Ext.create('Ext.data.Store', {
+            model: 'Book',
+            autoLoad: true,
+            groupField: 'user',
+            proxy: {
+                type: 'ajax',
+                url: 'BooksGrid/getDebtorsBooks',
+                reader: {
+                    type: 'json',
+                    root: 'books'
+                }
+            }
+        });
+
+
+        function debtors() {
+            console.log('start');
+            debtorsStor.load();
+            var win = Ext.create('Ext.window.Window', {
+                title: 'Должники',
+                modal: true,
+                height: 250,
+                width: 550,
+                layout: 'fit',
+                items: [{
+                    xtype: 'gridpanel',
+                    store: debtorsStor,
+                    //height: 250,
+                    
+                   // width: 550,
+                    features: [
+                        Ext.create('Ext.grid.feature.Grouping', {
+                            groupHeaderTpl: '{name} ({rows.length})'
+                        })],
+                    columns: [{
+                        xtype: 'rownumberer'
+                    }, {
+                        dataIndex: 'BookId',
+                        hidden: true
+                    }, {
+                        header: "Название",
+                        xtype: 'templatecolumn',
+                        flex: 1,
+                        dataIndex: 'author',
+                        tpl: '<b>{author}.</b> {title}'
+                    }, {
+                        header: 'Дата возврата (+10д)',
+                        dataIndex: 'takeDate'
+                        //,renderer: function(v) {
+                        //    if 
+                        //    return '<span style="color:red">{v}</span>';
+                    }, {
+                        header: 'Обложка',
+                        dataIndex: 'BookId',
+                        renderer: function (v) {
+                            return "<img style='width:80px; height:60px;' src=\"BooksGrid/getImageByID?BookId=" + v + "\" />";
+                        }
+                    }]
+                }]
+            });
+            win.show();
+            console.log('fin');
+        }
+
 
         function addNewBook() {
             var win = Ext.create('Ext.window.Window', {
@@ -408,6 +465,7 @@
         var booksGrid = Ext.create('Ext.grid.Panel', {
             title: 'Книги',
             store: bookStore,
+            flex: 1,
             viewConfig: {
                 plugins: {
                     ptype: 'gridviewdragdrop',
@@ -428,6 +486,10 @@
                     xtype: 'button',
                     text: 'Добавить книгу',
                     handler: addNewBook
+                }, {
+                    xtype: 'button',
+                    text: 'Должники',
+                    handler: debtors
                 }]
             }, {
                 xtype: 'pagingtoolbar',
@@ -438,18 +500,7 @@
                 afterPageText: 'из {0}',
                 displayMsg: 'Книги {0} - {1} из {2}'
             }],
-            listeners: {
-                //itemmouseenter: function (thiss, record, item, index, e, eOpts) {
-                    
-                //    popUpWin.show();
-                //    changePopupWin(record.index);
-                //   // console.log(record);
-                //},
-                //itemmouseleave: function (thiss, record, item, index, e, eOpts) {
-                //    popUpWin.hide();
-                //}
-
-            },
+            
             columns: [{
                 xtype: 'rownumberer'
             }, {
@@ -460,7 +511,8 @@
                 dataIndex: 'author'
             }, {
                 header: 'Название',
-                dataIndex: 'title'
+                dataIndex: 'title',
+                flex: 1
             }, {
                 header: 'Дата взятия',
                 dataIndex: 'takeDate'
@@ -522,6 +574,7 @@
         var userBookPanel = Ext.create('Ext.grid.Panel', {
             title: 'Мои книги',
             store: myBookStore,
+            flex:1,
             viewConfig: {
                 plugins: {
                     ptype: 'gridviewdragdrop',
@@ -535,18 +588,6 @@
                     }
                 }
             },
-            listeners: {
-                //itemmouseenter: function (thiss, record, item, index, e, eOpts) {
-                    
-                //    popUpWin.show();
-                //    changePopupWin(record.index);
-                //  //  console.log(record);
-                //},
-                //itemmouseleave: function (thiss, record, item, index, e, eOpts) {
-                //    popUpWin.hide();
-                //}
-
-            },
 
             columns: [{
                 xtype: 'rownumberer'
@@ -556,11 +597,15 @@
             }, {
                 header: "Название",
                 xtype: 'templatecolumn',
+                flex: 1,
                 dataIndex: 'author',
                 tpl:'<b>{author}.</b> {title}'
             }, {
                 header: 'Дата возврата (+10д)',
                 dataIndex: 'takeDate'
+                //,renderer: function(v) {
+                //    if 
+                //    return '<span style="color:red">{v}</span>';
             }, {
                 header: 'Обложка',
                 dataIndex: 'BookId',
