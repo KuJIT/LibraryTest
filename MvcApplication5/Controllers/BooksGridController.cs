@@ -181,7 +181,7 @@ namespace MvcApplication5.Controllers
         public JsonResult BookSearch(string filterField = null, string text = null)
         {
             if (text == null || text == "")
-                return Json(new { success = false }, JsonRequestBehavior.AllowGet);
+                return Json(new { success = true, books = new string[]{} }, JsonRequestBehavior.AllowGet);
 
             var booksQ = db.Books.Select(b => new { BookId = b.BookId, title = b.Title, author = b.Author, text = text});
 
@@ -219,8 +219,9 @@ namespace MvcApplication5.Controllers
                     break;
                 }
 
-            var books = booksQ.Take(5).ToArray();
-            return Json(new { success = true, books = books }, JsonRequestBehavior.AllowGet);
+            var books = booksQ.Take(5).ToList();
+            books.Add(new { BookId = 0, title = text, author = text, text = text });
+            return Json(new { success = true, books = books.ToArray() }, JsonRequestBehavior.AllowGet);
         }
 
         public FileContentResult getImageByID(string BookId = null)

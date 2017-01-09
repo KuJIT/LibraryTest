@@ -360,7 +360,13 @@
                 xtype: 'checkbox',
                 boxLabel: 'Только в наличии',
                 name: 'onlyInStock',
-                checked: false
+                id: 'onlyInStochChb',
+                checked: false,
+                listeners: {
+                    change: function (comboBox, ev) {
+                            startSearch();
+                    }
+                }
             }],
             buttons: [{
                 text: 'поиск',
@@ -383,7 +389,8 @@
         });
 
        // console.log(Ext.getCmp('filterText'));
-
+            //Ext.getCmp('onlyInStochChb').onchange = function() {
+            //    console.log( checkbox.checked )};
         //метод для входа пользователя
         function logInMethod() {
             loginForm.getForm().submit({
